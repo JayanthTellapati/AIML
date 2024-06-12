@@ -1,0 +1,332 @@
+pytorch tensor
+
+
+
+1.tensor_basics.py
+
+
+Poornima (Guest)
+9:36 AM
+import torch
+import numpy as np
+# From a Python list
+data_list = [[1, 2], [3, 4]]
+tensor_from_list = torch.tensor(data_list)
+print('List Tensor \n',tensor_from_list)
+# From a NumPy array
+data_np = np.array([[1, 2], [3, 4]])
+tensor_from_np = torch.tensor(data_np)
+print('Numpy Tensor \n',tensor_from_np)
+# Using Built-in Functions:
+# Creating a tensor of zeros
+zeros_tensor = torch.zeros((2, 3))
+print(zeros_tensor)
+# Creating a tensor of ones
+ones_tensor = torch.ones((2, 3))
+print(ones_tensor)
+# Creating a tensor with random values
+rand_tensor = torch.rand((2, 3))
+print(rand_tensor)
+ 
+
+
+[9:53 AM] Poornima (Guest)
+#From Existing Data:
+# From a Python list
+data_list = [1, 2, 3, 4]
+tensor_from_list = torch.tensor(data_list)
+print(tensor_from_list)
+# From a NumPy array
+data_np = np.array([1, 2, 3, 4])
+tensor_from_np = torch.tensor(data_np)
+print(tensor_from_np)
+
+#Basic Operations (Addition, Subtraction, Multiplication, Division)
+# Creating tensors
+data_list = [[1, 2], [3, 4]]
+data_np = np.array([[1, 2], [3, 4]])
+tensor_a = torch.tensor(data_list)            #[1, 2, 3])
+tensor_b = torch.tensor(data_np)               #[4, 5, 6])
+# Addition
+add_result = tensor_a + tensor_b
+print("Addition:", add_result)
+# Subtraction
+sub_result = tensor_a - tensor_b
+print("Subtraction:", sub_result)
+# Multiplication
+mul_result = tensor_a * tensor_b
+print("Multiplication:", mul_result)
+# Division
+div_result = tensor_a // tensor_b
+print("Division:", div_result)
+
+
+
+
+[10:43 AM] Poornima (Guest)
+#Reshaping Tensors (view, reshape)
+# Creating a tensor
+tensor_data1 = torch.tensor([[1, 2, 3, 4], [4, 5, 6, 7]])
+#tensor_data2 = torch.tensor([[1, 2, 3], [4, 5, 6], [7, 8, 9]])
+
+# Reshaping with view (note: view requires the tensor to be contiguous in memory)
+reshaped_view = tensor_data1.view(4, 2)
+print("Reshaped with view:", reshaped_view)
+# Reshaping with reshape (more flexible)
+reshaped_reshape = tensor_data1.reshape(4, 2)
+print("Reshaped with reshape:", reshaped_reshape)
+# Slicing and Indexing Tensors
+# Creating a tensor
+tensor = torch.tensor([[1, 2, 3], [4, 5, 6]])
+# Indexing
+first_element = tensor[0, 0]
+print("First element:", first_element)
+# Slicing
+first_row = tensor[0, :]
+print("First row:", first_row)
+second_column = tensor[:, 1]
+print("Second column:", second_column)
+# Advanced Operations (Concatenation, Stacking)
+# concatenation and stacking are useful for combining tensors.
+# Creating tensors
+tensor_a = torch.tensor([[1, 2], [3, 4]])
+tensor_b = torch.tensor([[5, 6], [7, 8]])
+# Concatenation along the first dimension (rows)
+concat_result = torch.cat((tensor_a, tensor_b), dim=0)
+print("Concatenated along rows:", concat_result)
+# Concatenation along the second dimension (columns)
+concat_result = torch.cat((tensor_a, tensor_b), dim=1)
+print("Concatenated along columns:", concat_result)
+# Stacking (creates a new dimension)
+stacked_result = torch.stack((tensor_a, tensor_b), dim=0)
+print("Stacked along new dimension:", stacked_result)
+
+
+
+
+
+
+
+
+2.data_transformations.py
+
+
+
+[11:45 AM] Poornima (Guest)
+
+import torchvision.transforms as transforms
+from PIL import Image
+# Load image
+image = Image.open('dog1.png').convert('RGB')           # Ensure image is in RGB format
+# Define transformations
+crop_transform = transforms.RandomCrop(128)
+flip_transform = transforms.RandomHorizontalFlip(p=1)   # Always flip
+rotate_transform = transforms.RandomRotation(45)        # Rotate by 45 degrees
+resize_transform = transforms.Resize((256, 256))
+# Define normalization transformation
+normalize_transform = transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                                           std=[0.229, 0.224, 0.225])
+# Convert PIL image to Tensor before applying normalization
+to_tensor_transform = transforms.ToTensor()
+
+# Apply and save crop transformation
+cropped_image = crop_transform(image)
+cropped_image.save('cropped_image.png')
+# Apply and save flip transformation
+flipped_image = flip_transform(image)
+flipped_image.save('flipped_image.png')
+# Apply and save rotate transformation
+rotated_image = rotate_transform(image)
+rotated_image.save('rotated_image.png')
+# Apply and save resize transformation
+resized_image = resize_transform(image)
+resized_image.save('resized_image.png')
+
+# Convert to tensor and apply normalization
+tensor_image = to_tensor_transform(image)             # Convert image to tensor
+normalized_image = normalize_transform(tensor_image)  # Apply normalization
+# Convert normalized tensor back to PIL image and save
+to_pil_image = transforms.ToPILImage()
+normalized_pil_image = to_pil_image(normalized_image)
+normalized_pil_image.save('normalized_image.png')
+
+print("Images saved successfully.")
+
+
+ 
+
+
+
+
+
+
+3.torch_utils_data_dataset
+
+
+
+[12:48 PM] Poornima (Guest)
+import os
+from PIL import Image
+from torch.utils.data import Dataset, DataLoader
+import torchvision.transforms as transforms
+
+# Define custom dataset
+class CustomImageDataset(Dataset):
+    def __init__(self, img_dir, transform=None):
+        self.img_dir = img_dir
+        self.transform = transform
+        self.img_labels = []
+        self.classes = ['dogs']
+        for label in self.classes:
+            for img_name in os.listdir(os.path.join(img_dir, label)):
+                self.img_labels.append((os.path.join(img_dir, label, img_name), self.classes.index(label)))
+    def __len__(self):
+        return len(self.img_labels)
+    def __getitem__(self, idx):
+        img_path, label = self.img_labels[idx]
+        image = Image.open(img_path).convert('RGB')
+        if self.transform:
+            image = self.transform(image)
+        return image, label
+
+# Define transformations
+transform = transforms.Compose([
+    transforms.Resize((128, 128)),
+    transforms.ToTensor(),
+    transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+])
+# Create dataset and dataloader
+image_dataset = CustomImageDataset(img_dir='dataset', transform=transform)
+image_dataloader = DataLoader(image_dataset, batch_size=2, shuffle=True, num_workers=2)
+# Iterate through the dataloader and display information
+for batch_idx, (images, labels) in enumerate(image_dataloader):
+    print(f"Batch {batch_idx + 1}")
+    print(f"Images Shape: {images.shape}")
+    print(f"Labels: {labels}")
+    break  # Just process the first batch for this example
+ 
+ 
+
+
+
+
+
+
+4.augumentation.py
+
+
+
+
+Poornima (Guest)
+3:16 PM
+import nltk
+from torchvision import transforms
+from PIL import Image
+import matplotlib.pyplot as plt
+
+#IMAGE AUGUMENTATION
+# Define a series of transformations
+augmentations = transforms.Compose([
+    transforms.RandomRotation(30),
+    transforms.RandomHorizontalFlip(p=1),
+    transforms.RandomResizedCrop(224),
+    transforms.ColorJitter(brightness=0.2, contrast=0.2,
+                           saturation=0.2, hue=0.2),
+    transforms.ToTensor()
+])
+# Load an image
+image = Image.open('dog1.png')
+# Apply transformations
+augmented_image = augmentations(image)
+# Convert the tensor to a PIL Image for visualization
+augmented_image_pil = transforms.ToPILImage()(augmented_image)
+# Display the original and augmented images
+plt.figure(figsize=(10, 5))
+plt.subplot(1, 2, 1)
+plt.title("Original Image")
+plt.imshow(image)
+plt.axis('off')
+plt.subplot(1, 2, 2)
+plt.title("Augmented Image")
+plt.imshow(augmented_image_pil)
+plt.axis('off')
+plt.show()
+
+
+#TEXT AUGUMENTATION
+#nltk.download('wordnet')            # Uncomment for 1st time
+import random
+from nltk.corpus import wordnet
+# Synonym replacement
+def synonym_replacement(words, n):
+    new_words = words.copy()
+    random_word_list = list(set([word for word in words if wordnet.synsets(word)]))
+    random.shuffle(random_word_list)
+    num_replaced = 0
+    for random_word in random_word_list:
+        synonyms = wordnet.synsets(random_word)
+        if synonyms:
+            synonym = synonyms[0].lemmas()[0].name()
+            new_words = [synonym if word == random_word else word for word in new_words]
+            num_replaced += 1
+        if num_replaced >= n:
+            break
+    return new_words
+# Random insertion
+def random_insertion(words, n):
+    new_words = words.copy()
+    for _ in range(n):
+        add_word(new_words)
+    return new_words
+def add_word(new_words):
+    synonyms = []
+    counter = 0
+    while len(synonyms) < 1:
+        random_word = new_words[random.randint(0, len(new_words)-1)]
+        synonyms = wordnet.synsets(random_word)
+        counter += 1
+        if counter >= 10:
+            return
+    random_synonym = synonyms[0].lemmas()[0].name()
+    random_idx = random.randint(0, len(new_words)-1)
+    new_words.insert(random_idx, random_synonym)
+# Random swap
+def random_swap(words, n):
+    new_words = words.copy()
+    for _ in range(n):
+        new_words = swap_word(new_words)
+    return new_words
+def swap_word(new_words):
+    random_idx_1 = random.randint(0, len(new_words)-1)
+    random_idx_2 = random.randint(0, len(new_words)-1)
+    new_words[random_idx_1], new_words[random_idx_2] = new_words[random_idx_2], new_words[random_idx_1]
+    return new_words
+# Random deletion
+def random_deletion(words, p):
+    if len(words) == 1:
+        return words
+    new_words = []
+    for word in words:
+        r = random.uniform(0, 1)
+        if r > p:
+            new_words.append(word)
+    if len(new_words) == 0:
+        rand_int = random.randint(0, len(words)-1)
+        return [words[rand_int]]
+    return new_words
+# Example usage
+sentence = "Python is a wonderful language."        # It has many features."
+words = sentence.split()
+print("Original Sentence:")
+print(sentence)
+print("\nSynonym Replacement:")
+print(' '.join(synonym_replacement(words, 2)))
+print("\nRandom Insertion:")
+print(' '.join(random_insertion(words, 2)))
+print("\nRandom Swap:")
+print(' '.join(random_swap(words, 2)))
+print("\nRandom Deletion:")
+print(' '.join(random_deletion(words, 0.2)))
+
+ 
+ 
