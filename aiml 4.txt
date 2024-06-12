@@ -1,0 +1,366 @@
+visualization
+
+
+3.seaborn_simple_plots.py
+
+
+
+[3:01 PM] Poornima (Guest)
+import seaborn as sns
+import matplotlib.pyplot as plt
+import pandas as pd
+import numpy as np
+# Create a sample DataFrame
+data = pd.DataFrame({
+    'x': np.random.rand(100),
+    'y': np.random.rand(100)
+})
+# Create a scatterplot
+sns.scatterplot(x='x', y='y', data=data)
+plt.title('Scatterplot of x vs y')
+plt.show()
+# Create a sample DataFrame with a time series
+data = pd.DataFrame({
+    'time': pd.date_range(start='1/1/2020', periods=100),
+    'value': np.random.rand(100).cumsum()
+})
+# Create a lineplot
+sns.lineplot(x='time', y='value', data=data)
+plt.title('Lineplot of Value over Time')
+plt.show()
+# Create a sample DataFrame
+data = pd.DataFrame({
+    'category': ['A', 'B', 'C', 'D'],
+    'value': [10, 20, 15, 25]
+})
+# Create a barplot
+sns.barplot(x='category', y='value', data=data)
+plt.title('Barplot of Categories')
+plt.show()
+# Create a sample DataFrame
+data = pd.DataFrame({
+    'category': ['A', 'B', 'A', 'C', 'B', 'A', 'D', 'C', 'C']
+})
+# Create a countplot
+sns.countplot(x='category', data=data)
+plt.title('Countplot of Categories')
+plt.show()
+# Create a sample DataFrame
+data = pd.DataFrame({
+    'value': np.random.randn(100)
+})
+# Create a histogram
+sns.histplot(data['value'], bins=10)
+plt.title('Histogram of Values')
+plt.show()
+
+# Create a KDE plot
+sns.kdeplot(data['value'])
+plt.title('KDE Plot of Values')
+plt.show()
+
+
+
+
+
+
+4.adv_seaborn_plots
+
+
+
+
+[3:45 PM] Poornima (Guest)
+import seaborn as sns
+import matplotlib.pyplot as plt
+# Load the iris dataset
+iris = sns.load_dataset('iris')
+# Create a pair plot
+sns.pairplot(iris, hue='species')
+plt.title('Pair Plot of Iris Dataset')
+plt.show()
+# Create a joint plot
+sns.jointplot(x='sepal_length', y='sepal_width', data=iris, kind='scatter', hue='species')
+plt.suptitle('Joint Plot of Sepal Length vs Sepal Width')
+plt.show()
+# Exclude non-numeric columns
+numeric_iris = iris.drop(columns=['species'])
+# Create a sample correlation matrix
+data = numeric_iris.corr()
+# Create a heatmap
+sns.heatmap(data, annot=True, cmap='coolwarm')
+plt.title('Heatmap of Iris Correlation Matrix')
+plt.show()
+# Create a facet grid
+g = sns.FacetGrid(iris, col='species')
+g.map(sns.histplot, 'sepal_length')
+plt.suptitle('Facet Grid of Sepal Length by Species')
+plt.show()
+#Customising Plots
+# Set a theme
+sns.set_theme(style='whitegrid')
+# Create a scatter plot with the theme
+sns.scatterplot(x='sepal_length', y='sepal_width', data=iris, hue='species')
+plt.title('Scatter Plot with Whitegrid Theme')
+plt.show()
+# Set a color palette
+sns.set_palette('pastel')
+# Create a bar plot with the color palette
+sns.barplot(x='species', y='sepal_length', data=iris)
+plt.title('Bar Plot with Pastel Color Palette')
+plt.show()
+
+# Create a bar plot with annotations
+sns.barplot(x='species', y='sepal_length', data=iris, errorbar='sd')
+# Add annotations
+for p in plt.gca().patches:
+    plt.gca().annotate(f'{p.get_height():.2f}', (p.get_x() + p.get_width() / 2., p.get_height()),
+                       ha='center', va='center', xytext=(0, 10), textcoords='offset points')
+plt.title('Bar Plot with Statistical Annotations')
+plt.show()
+
+# Create a scatter plot with Seaborn
+sns.scatterplot(x='sepal_length', y='sepal_width', data=iris, hue='species')
+# Customize with Matplotlib
+plt.title('Scatter Plot with Matplotlib Customization')
+plt.xlabel('Sepal Length')
+plt.ylabel('Sepal Width')
+plt.legend(title='Species')
+plt.grid(True)
+plt.show()
+
+
+
+
+
+
+
+
+ EDA
+
+
+1.EDA_impl.py
+
+
+
+[4:45 PM] Poornima (Guest)
+import pandas as pd
+import seaborn as sns
+import matplotlib.pyplot as plt
+# Load a sample dataset
+iris = sns.load_dataset('iris')
+# 1. Data Collection
+print("First few rows of the dataset:")
+print(iris.head())
+# 2. Data Cleaning
+# Check for missing values
+print("\nMissing values:")
+print(iris.isnull().sum())
+# 3. Data Transformation
+# Encode categorical data if necessary (not needed for iris dataset)
+# 4. Data Visualization
+# Pairplot to visualize relationships between variables
+sns.pairplot(iris, hue='species')
+plt.suptitle('Pairplot of Iris Dataset')
+plt.show()
+# 5. Descriptive Statistics
+print("\nDescriptive statistics:")
+print(iris.describe())
+# 6. Correlation Analysis
+numeric_iris = iris.drop(columns=['species'])
+correlation_matrix = numeric_iris.corr()
+print("\nCorrelation matrix:")
+print(correlation_matrix)
+# Heatmap of the correlation matrix
+sns.heatmap(correlation_matrix, annot=True, cmap='coolwarm')
+plt.title('Heatmap of Correlation Matrix')
+plt.show()
+# 7. Hypothesis Testing
+# Example: Test if the mean sepal length is different for different species
+from scipy.stats import f_oneway
+setosa = iris[iris['species'] == 'setosa']['sepal_length']
+versicolor = iris[iris['species'] == 'versicolor']['sepal_length']
+virginica = iris[iris['species'] == 'virginica']['sepal_length']
+f_stat, p_value = f_oneway(setosa, versicolor, virginica)
+print("\nANOVA test for sepal length across species:")
+print(f"F-statistic: {f_stat}, P-value: {p_value}")
+# 8. Feature Engineering
+# Example: Create a new feature 'sepal_area'
+iris['sepal_area'] = iris['sepal_length'] * iris['sepal_width']
+print("\nFirst few rows with the new feature 'sepal_area':")
+print(iris.head())
+# Visualize the new feature
+sns.boxplot(x='species', y='sepal_area', data=iris)
+plt.title('Boxplot of Sepal Area by Species')
+plt.show()
+ 
+
+
+
+
+
+
+
+2.summary_statistics.py
+
+
+
+import pandas as pd
+import seaborn as sns
+import matplotlib.pyplot as plt
+
+# Load a sample dataset
+iris = sns.load_dataset('iris')
+
+# 4.2.1 Descriptive Statistics
+mean_sepal_length = iris['sepal_length'].mean()
+median_sepal_length = iris['sepal_length'].median()
+mode_sepal_length = iris['sepal_length'].mode()[0]
+
+print(f"Mean Sepal Length: {mean_sepal_length}")
+print(f"Median Sepal Length: {median_sepal_length}")
+print(f"Mode Sepal Length: {mode_sepal_length}")
+
+# 4.2.2 Dispersion Statistics
+variance_sepal_length = iris['sepal_length'].var()
+std_dev_sepal_length = iris['sepal_length'].std()
+
+print(f"Variance of Sepal Length: {variance_sepal_length}")
+print(f"Standard Deviation of Sepal Length: {std_dev_sepal_length}")
+
+# 4.2.3 Correlation Analysis
+import seaborn as sns
+
+iris = sns.load_dataset('iris')
+
+# Drop the non-numeric 'species' column
+numeric_iris = iris.drop(columns=['species'])
+
+# Calculate the correlation matrix
+correlation_matrix = numeric_iris.corr()
+
+print("Correlation matrix:")
+print(correlation_matrix)
+
+# Visualize the correlation matrix using a heatmap
+plt.figure(figsize=(10, 8))
+sns.heatmap(correlation_matrix, annot=True, cmap='coolwarm')
+plt.title('Heatmap of Correlation Matrix')
+plt.show()
+
+
+
+
+ 
+
+
+3.visual_EDA
+
+
+[5:08 PM] Poornima (Guest)
+import seaborn as sns
+import matplotlib.pyplot as plt
+# Load a sample dataset
+iris = sns.load_dataset('iris')
+# Univariate Analysis
+# Histogram
+plt.figure(figsize=(10, 5))
+sns.histplot(iris['sepal_length'], kde=True)
+plt.title('Histogram of Sepal Length')
+plt.xlabel('Sepal Length')
+plt.ylabel('Frequency')
+plt.show()
+# Box Plot
+plt.figure(figsize=(10, 5))
+sns.boxplot(x=iris['sepal_length'])
+plt.title('Box Plot of Sepal Length')
+plt.xlabel('Sepal Length')
+plt.show()
+# Bivariate Analysis
+# Scatter Plot
+plt.figure(figsize=(10, 5))
+sns.scatterplot(x='sepal_length', y='sepal_width', data=iris)
+plt.title('Scatter Plot of Sepal Length vs Sepal Width')
+plt.xlabel('Sepal Length')
+plt.ylabel('Sepal Width')
+plt.show()
+# Box Plot
+plt.figure(figsize=(10, 5))
+sns.boxplot(x='species', y='sepal_length', data=iris)
+plt.title('Box Plot of Sepal Length by Species')
+plt.xlabel('Species')
+plt.ylabel('Sepal Length')
+plt.show()
+# Multivariate Analysis
+# Pair Plot
+sns.pairplot(iris, hue='species')
+plt.title('Pair Plot of Iris Dataset')
+plt.show()
+# Heatmap
+numeric_iris = iris.drop(columns=['species'])
+correlation_matrix = numeric_iris.corr()
+plt.figure(figsize=(10, 8))
+sns.heatmap(correlation_matrix, annot=True, cmap='coolwarm')
+plt.title('Heatmap of Correlation Matrix')
+plt.show()
+# Facet Grid
+g = sns.FacetGrid(iris, col='species')
+g.map(sns.scatterplot, 'sepal_length', 'sepal_width')
+plt.show()
+
+ 
+
+
+
+
+
+
+4.reporting_findings.py
+
+
+
+import seaborn as sns
+import matplotlib.pyplot as plt
+
+iris = sns.load_dataset('iris')
+
+# 2. Data Description
+summary_stats = iris.describe()
+print("Summary Statistics:")
+print(summary_stats)
+
+# 3. Check for missing values
+missing_values = iris.isnull().sum()
+print("Missing Values:")
+print(missing_values)
+
+# 4. Data Visualization
+# Pairplot
+sns.pairplot(iris, hue='species')
+plt.show()
+
+# Box plot
+plt.figure(figsize=(10, 6))
+sns.boxplot(data=iris)
+plt.title('Box Plot of Iris Features')
+plt.show()
+
+# Heatmap
+numeric_iris = iris.drop(columns=['species'])
+correlation_matrix = numeric_iris.corr()
+plt.figure(figsize=(10, 8))
+sns.heatmap(correlation_matrix, annot=True, cmap='coolwarm')
+plt.title('Heatmap of Correlation Matrix')
+plt.show()
+
+# 5. Insights and Observations
+print("Insights and Observations:")
+print("- Species Differentiation: The pairplot indicates clear separation between the species based on petal length and width.")
+print("- Outliers: The box plot reveals some outliers in sepal width.")
+print("- Correlation: The heatmap shows high correlation between petal length and petal width.")
+
+# 6. Conclusions and Next Steps
+print("Conclusions and Next Steps:")
+print("- Conclusions: The EDA shows that petal dimensions are good indicators of species differentiation. Sepal dimensions are less distinctive.")
+print("- Next Steps: Further analysis could include modeling to predict species based on the measurements, and investigating the outliers in more detail.")
+ 
+ 
