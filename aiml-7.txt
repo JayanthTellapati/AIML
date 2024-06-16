@@ -1,0 +1,453 @@
+regression
+
+
+
+
+5.logistic_regression.py
+
+
+
+
+
+Poornima (Guest)
+11:45 AM
+# LogisticRegression
+import torch
+import torch.nn as nn
+import numpy as np
+import matplotlib.pyplot as plt
+from sklearn.datasets import make_classification
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+# Generate synthetic data
+X, y = make_classification(n_samples=100, n_features=2, n_informative=2, n_redundant=0, random_state=42)
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+# Standardize features
+scaler = StandardScaler()
+X_train = scaler.fit_transform(X_train)
+X_test = scaler.transform(X_test)
+# Convert to PyTorch tensors
+X_train_tensor = torch.from_numpy(X_train).float()
+y_train_tensor = torch.from_numpy(y_train).float().view(-1, 1)
+X_test_tensor = torch.from_numpy(X_test).float()
+y_test_tensor = torch.from_numpy(y_test).float().view(-1, 1)
+# Model
+class LogisticRegressionModel(nn.Module):
+    def __init__(self):
+        super(LogisticRegressionModel, self).__init__()
+        self.linear = nn.Linear(2, 1)
+    def forward(self, x):
+        return torch.sigmoid(self.linear(x))
+
+model = LogisticRegressionModel()
+# Define the loss function and the optimizer
+criterion = nn.BCELoss()  # Binary Cross-Entropy Loss
+optimizer = torch.optim.SGD(model.parameters(), lr=0.01)
+# Training loop
+num_epochs = 1000
+losses = []
+for epoch in range(num_epochs):
+    model.train()
+    optimizer.zero_grad()
+    # Forward pass
+    outputs = model(X_train_tensor)
+    loss = criterion(outputs, y_train_tensor)
+    # Backward pass and optimization
+    loss.backward()
+    optimizer.step()
+    losses.append(loss.item())
+    if (epoch + 1) % 100 == 0:
+        print(f'Epoch [{epoch + 1}/{num_epochs}], Loss: {loss.item():.4f}')
+# Plot training loss
+plt.plot(range(num_epochs), losses)
+plt.xlabel('Epoch')
+plt.ylabel('Loss')
+plt.title('Training Loss')
+plt.show()
+# Evaluating Model
+# Evaluation
+model.eval()
+with torch.no_grad():
+    y_pred_train = model(X_train_tensor).round()
+    y_pred_test = model(X_test_tensor).round()
+# Calculate accuracy
+train_accuracy = (y_pred_train.eq(y_train_tensor).sum() / float(y_train_tensor.shape[0])).item()
+test_accuracy = (y_pred_test.eq(y_test_tensor).sum() / float(y_test_tensor.shape[0])).item()
+print(f'Train Accuracy: {train_accuracy * 100:.2f}%')
+print(f'Test Accuracy: {test_accuracy * 100:.2f}%')
+
+# Plot decision boundary
+def plot_decision_boundary(X, y, model):
+    x_min, x_max = X[:, 0].min() - 1, X[:, 0].max() + 1
+    y_min, y_max = X[:, 1].min() - 1, X[:, 1].max() + 1
+    xx, yy = np.meshgrid(np.arange(x_min, x_max, 0.01),
+                         np.arange(y_min, y_max, 0.01))
+    grid = np.c_[xx.ravel(), yy.ravel()]
+    with torch.no_grad():
+        grid_tensor = torch.from_numpy(grid).float()
+        zz = model(grid_tensor).round().numpy().reshape(xx.shape)
+    plt.contourf(xx, yy, zz, alpha=0.3)
+    plt.scatter(X[:, 0], X[:, 1], c=y, edgecolors='k', marker='o')
+    plt.show()
+
+plot_decision_boundary(X_train, y_train, model)
+plot_decision_boundary(X_test, y_test, model)
+
+
+ 
+
+
+
+
+Classification
+
+
+
+1.KNN.py
+
+
+
+
+
+
+[1:12 PM] Poornima (Guest)
+# k-NN with PyTorch
+import torch
+from sklearn.datasets import load_iris
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+# Load the Iris dataset
+iris = load_iris()
+X, y = iris.data, iris.target
+# Split the data into training and test sets
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+# Standardize the features
+scaler = StandardScaler()
+X_train = scaler.fit_transform(X_train)
+X_test = scaler.transform(X_test)
+# Convert to PyTorch tensors
+X_train_tensor = torch.from_numpy(X_train).float()
+y_train_tensor = torch.from_numpy(y_train).float()
+X_test_tensor = torch.from_numpy(X_test).float()
+y_test_tensor = torch.from_numpy(y_test).float()
+# Implementing the k-NN Algorithm
+def euclidean_distance(a, b):
+    return torch.sqrt(torch.sum((a - b) ** 2, dim=1))
+def knn_predict(X_train, y_train, X_test, k):
+    y_pred = []
+    for test_point in X_test:
+        distances = euclidean_distance(X_train, test_point)
+        _, indices = torch.topk(distances, k, largest=False)
+        nearest_labels = y_train[indices]
+        majority_label = torch.mode(nearest_labels).values.item()
+        y_pred.append(majority_label)
+    return torch.tensor(y_pred)
+# Predict using k-NN with k=3
+k = 3
+y_pred = knn_predict(X_train_tensor, y_train_tensor, X_test_tensor, k)
+# Evaluating the Model
+from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
+import matplotlib.pyplot as plt
+import seaborn as sns
+# Generate classification report
+report = classification_report(y_test, y_pred, target_names=iris.target_names)
+print('Classification Report:')
+print(report)
+# Calculate accuracy
+accuracy = accuracy_score(y_test, y_pred)
+print(f'Accuracy: {accuracy * 100:.2f}%')
+# Plot confusion matrix
+conf_matrix = confusion_matrix(y_test, y_pred)
+plt.figure(figsize=(8, 6))
+sns.heatmap(conf_matrix, annot=True, fmt='d', cmap='Blues',
+            xticklabels=iris.target_names, yticklabels=iris.target_names)
+plt.xlabel('Predicted')
+plt.ylabel('Actual')
+plt.title('Confusion Matrix')
+plt.show()
+
+
+ 
+
+
+
+
+
+
+2.SVM.py
+
+
+
+
+
+[5:16 PM] Poornima (Guest)
+# SVM with PyTorch
+import torch
+import numpy as np
+from sklearn.datasets import make_classification
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+from torch import nn
+import matplotlib.pyplot as plt
+# Generate synthetic data
+X, y = make_classification(n_samples=500, n_features=2, n_informative=2, n_redundant=0, random_state=42)
+y[y == 0] = -1  # Change labels from {0, 1} to {-1, 1}
+# Split the data into training and test sets
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+# Standardize features
+scaler = StandardScaler()
+X_train = scaler.fit_transform(X_train)
+X_test = scaler.transform(X_test)
+# Convert to PyTorch tensors
+X_train_tensor = torch.from_numpy(X_train).float()
+y_train_tensor = torch.from_numpy(y_train).float().view(-1, 1)
+X_test_tensor = torch.from_numpy(X_test).float()
+y_test_tensor = torch.from_numpy(y_test).float().view(-1, 1)
+
+class SVMModel(nn.Module):
+    def __init__(self):
+        super(SVMModel, self).__init__()
+        self.linear = nn.Linear(2, 1)
+    def forward(self, x):
+        return self.linear(x)
+
+model = SVMModel()
+
+# Define the loss function and the optimizer
+def hinge_loss(outputs, labels):
+    return torch.mean(torch.clamp(1 - outputs * labels, min=0))
+
+optimizer = torch.optim.SGD(model.parameters(), lr=0.01)
+# Training loop
+num_epochs = 1000
+losses = []
+for epoch in range(num_epochs):
+    model.train()
+    optimizer.zero_grad()
+    # Forward pass
+    outputs = model(X_train_tensor)
+    loss = hinge_loss(outputs, y_train_tensor)
+    # Backward pass and optimization
+    loss.backward()
+    optimizer.step()
+    losses.append(loss.item())
+    if (epoch + 1) % 100 == 0:
+        print(f'Epoch [{epoch + 1}/{num_epochs}], Loss: {loss.item():.4f}')
+# Plot training loss
+plt.plot(range(num_epochs), losses)
+plt.xlabel('Epoch')
+plt.ylabel('Loss')
+plt.title('Training Loss')
+plt.show()
+# Evaluating Model
+# Evaluation
+model.eval()
+with torch.no_grad():
+    y_pred_train = model(X_train_tensor).sign().view(-1)
+    y_pred_test = model(X_test_tensor).sign().view(-1)
+# Calculate accuracy
+train_accuracy = (y_pred_train.eq(y_train_tensor.view(-1)).sum() / float(y_train_tensor.shape[0])).item()
+test_accuracy = (y_pred_test.eq(y_test_tensor.view(-1)).sum() / float(y_test_tensor.shape[0])).item()
+print(f'Train Accuracy: {train_accuracy * 100:.2f}%')
+print(f'Test Accuracy: {test_accuracy * 100:.2f}%')
+
+# Plot decision boundary
+def plot_decision_boundary(X, y, model):
+    x_min, x_max = X[:, 0].min() - 1, X[:, 0].max() + 1
+    y_min, y_max = X[:, 1].min() - 1, X[:, 1].max() + 1
+    xx, yy = np.meshgrid(np.arange(x_min, x_max, 0.01),
+                         np.arange(y_min, y_max, 0.01))
+    grid = np.c_[xx.ravel(), yy.ravel()]
+    with torch.no_grad():
+        grid_tensor = torch.from_numpy(grid).float()
+        zz = model(grid_tensor).sign().numpy().reshape(xx.shape)
+    plt.contourf(xx, yy, zz, alpha=0.5)
+    plt.scatter(X[:, 0], X[:, 1], c=y, edgecolors='k', marker='o')
+    plt.show()
+
+plot_decision_boundary(X_train, y_train, model)
+plot_decision_boundary(X_test, y_test, model)
+
+
+ 
+
+
+
+
+
+
+
+
+
+3.decision_trees.py
+
+
+
+Poornima (Guest)
+4:02 PM
+import numpy as np
+from sklearn.datasets import load_iris
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+from collections import Counter
+import matplotlib.pyplot as plt
+import seaborn as sns
+from sklearn.metrics import classification_report, confusion_matrix
+# Load the Iris dataset
+iris = load_iris()
+X, y = iris.data, iris.target
+# Split the data into training and test sets
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+# Standardize features
+scaler = StandardScaler()
+X_train = scaler.fit_transform(X_train)
+X_test = scaler.transform(X_test)
+class DecisionTreeNode:
+    def __init__(self, gini, num_samples, num_samples_per_class, predicted_class):
+        self.gini = gini
+        self.num_samples = num_samples
+        self.num_samples_per_class = num_samples_per_class
+        self.predicted_class = predicted_class
+        self.feature_index = 0
+        self.threshold = 0
+        self.left = None
+        self.right = None
+def gini_impurity(y):
+    m = len(y)
+    return 1.0 - sum((np.sum(y == c) / m) ** 2 for c in np.unique(y))
+def grow_tree(X, y, depth=0, max_depth=None):
+    num_samples_per_class = [np.sum(y == i) for i in np.unique(y)]
+    predicted_class = np.argmax(num_samples_per_class)
+    node = DecisionTreeNode(
+        gini=gini_impurity(y),
+        num_samples=len(y),
+        num_samples_per_class=num_samples_per_class,
+        predicted_class=predicted_class,
+    )
+    if depth < max_depth and len(set(y)) > 1:
+        idx, thr = best_split(X, y)
+        if idx is not None:
+            indices_left = X[:, idx] < thr
+            X_left, y_left = X[indices_left], y[indices_left]
+            X_right, y_right = X[~indices_left], y[~indices_left]
+            node.feature_index = idx
+            node.threshold = thr
+            node.left = grow_tree(X_left, y_left, depth + 1, max_depth)
+            node.right = grow_tree(X_right, y_right, depth + 1, max_depth)
+    return node
+def best_split(X, y):
+    m, n = X.shape
+    if m <= 1:
+        return None, None
+    num_parent = [np.sum(y == c) for c in np.unique(y)]
+    best_gini = 1.0 - sum((num / m) ** 2 for num in num_parent)
+    best_idx, best_thr = None, None
+    for idx in range(n):
+        thresholds, classes = zip(*sorted(zip(X[:, idx], y)))
+        num_left = Counter()
+        num_right = Counter(y)
+        for i in range(1, m):
+            c = classes[i - 1]
+            num_left[c] += 1
+            num_right[c] -= 1
+            gini_left = 1.0 - sum((num_left[x] / i) ** 2 for x in num_left)
+            gini_right = 1.0 - sum((num_right[x] / (m - i)) ** 2 for x in num_right)
+            gini = (i * gini_left + (m - i) * gini_right) / m
+            if thresholds[i] == thresholds[i - 1]:
+                continue
+            if gini < best_gini:
+                best_gini = gini
+                best_idx = idx
+                best_thr = (thresholds[i] + thresholds[i - 1]) / 2
+    return best_idx, best_thr
+def predict_tree(node, X):
+    if node.left is None and node.right is None:
+        return node.predicted_class
+    if X[node.feature_index] < node.threshold:
+        return predict_tree(node.left, X)
+    else:
+        return predict_tree(node.right, X)
+def predict(X, tree):
+    return [predict_tree(tree, x) for x in X]
+# Grow the tree
+tree = grow_tree(X_train, y_train, max_depth=3)
+# Evaluate the model
+y_pred_train = predict(X_train, tree)
+y_pred_test = predict(X_test, tree)
+# Calculate accuracy
+train_accuracy = np.mean(y_pred_train == y_train)
+test_accuracy = np.mean(y_pred_test == y_test)
+print(f'Train Accuracy: {train_accuracy * 100:.2f}%')
+print(f'Test Accuracy: {test_accuracy * 100:.2f}%')
+# Generate classification report
+report = classification_report(y_test, y_pred_test, target_names=iris.target_names)
+print('Classification Report:')
+print(report)
+# Plot confusion matrix
+conf_matrix = confusion_matrix(y_test, y_pred_test)
+plt.figure(figsize=(8, 6))
+sns.heatmap(conf_matrix, annot=True, fmt='d', cmap='Blues', xticklabels=iris.target_names, yticklabels=iris.target_names)
+plt.xlabel('Predicted')
+plt.ylabel('Actual')
+plt.title('Confusion Matrix')
+plt.show()
+ 
+
+
+
+
+
+
+
+
+
+
+
+[5:41 PM] Poornima (Guest)
+
+import pandas as pd
+from sklearn.metrics import confusion_matrix
+from sklearn.model_selection import train_test_split
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.metrics import accuracy_score
+from sklearn.metrics import classification_report
+# Function importing Dataset
+def importdata():
+        balance_data = pd.read_csv('balance-scale.data',
+                                sep= ',', header = None)
+        print ("Dataset Length: ", len(balance_data))
+        print ("Dataset Shape: ", balance_data.shape)
+        print ("Dataset")
+        print(balance_data.head())
+        return balance_data
+def splitdataset(balance_data):
+        X = balance_data.values[:, 1:5]
+        Y = balance_data.values[:, 0]
+        X_train, X_test, y_train, y_test = train_test_split(
+                                        X, Y, test_size = 0.3, random_state = 100)
+        return X, Y, X_train, X_test, y_train, y_test
+def train_using_gini(X_train, X_test, y_train):
+        clf_gini = DecisionTreeClassifier(criterion = "gini",
+                random_state = 100,max_depth=3, min_samples_leaf=5)
+        clf_gini.fit(X_train, y_train)
+        return clf_gini
+def prediction(X_test, clf_object):
+        y_pred = clf_object.predict(X_test)
+        print("Predicted values:")
+        print(y_pred)
+        return y_pred
+def cal_accuracy(y_test, y_pred):
+        print("Confusion Matrix: ", confusion_matrix(y_test, y_pred))
+        print ("Accuracy : ",
+        accuracy_score(y_test,y_pred)*100)
+        print("Report : ",
+        classification_report(y_test, y_pred))
+
+#driver code
+data = importdata()
+X, Y, X_train, X_test, y_train, y_test = splitdataset(data)
+clf_gini = train_using_gini(X_train, X_test, y_train)
+print("Results Using Gini Index:")
+y_pred_gini = prediction(X_test, clf_gini)
+cal_accuracy(y_test, y_pred_gini)
+ 
