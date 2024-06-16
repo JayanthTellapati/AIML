@@ -1,0 +1,26 @@
+
+python
+import torch
+from torchvision import transforms
+from PIL import Image
+
+# Problem 1
+image = Image.open("image.jpg")
+custom_transform = transforms.Compose([transforms.ToTensor(), transforms.Normalize(mean=0.5, std=0.5)])
+normalized_image = custom_transform(image)
+
+# Problem 2
+class RotateAndResize:
+    def __call__(self, img):
+        return img.rotate(45).resize((128, 128))
+
+custom_transform = transforms.Compose([RotateAndResize(), transforms.ToTensor()])
+transformed_image = custom_transform(image)
+
+# Problem 3
+random_horizontal_flip = transforms.RandomHorizontalFlip()
+random_crop = transforms.RandomCrop(size=(100, 100))
+to_grayscale = transforms.Grayscale()
+
+custom_transform = transforms.Compose([random_horizontal_flip, random_crop, to_grayscale])
+transformed_image = custom_transform(image)
