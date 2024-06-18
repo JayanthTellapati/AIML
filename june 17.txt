@@ -1,0 +1,262 @@
+clustering
+
+
+
+1.k-means.py
+
+
+
+[11:49 AM] Poornima (Guest)
+import torch
+import matplotlib.pyplot as plt
+from sklearn.datasets import make_blobs
+# Preparing the Dataset
+# Generate synthetic data
+n_samples = 30
+n_features = 2
+n_clusters = 3
+X, y = make_blobs(n_samples=n_samples, n_features=n_features,
+                  centers=n_clusters)
+print('X values : \n ',X, '\n y values : \n ', y)
+# Convert to PyTorch tensors
+X_tensor = torch.from_numpy(X).float()
+# Defining and Initializing Centroids
+def initialize_centroids(X, k):
+    indices = torch.randperm(X.size(0))[:k]
+    return X[indices]
+k = 3
+'''centroids = initialize_centroids(X_tensor, k)
+print(f'Initial centroids:\n{centroids}')
+'''
+# Performing the Assignment and Update Steps
+def assign_clusters(X, centroids):
+    distances = torch.cdist(X, centroids)
+    return torch.argmin(distances, dim=1)
+def update_centroids(X, labels, k):
+    new_centroids = torch.zeros((k, X.size(1)))
+    for i in range(k):
+        points = X[labels == i]
+        new_centroids[i] = points.mean(dim=0)
+    return new_centroids
+def kmeans(X, k, max_iters=10, tol=1e-4):
+    global labels
+    centroids = initialize_centroids(X, k)
+    print(f'Centroids:\n{centroids}')
+    for i in range(max_iters):
+        labels = assign_clusters(X, centroids)
+        print('Labels \n', labels)
+        new_centroids = update_centroids(X, labels, k)
+        if torch.all(torch.norm(new_centroids - centroids, dim=1) < tol):
+            break
+        centroids = new_centroids
+    return centroids, labels
+# Run k-means clustering
+final_centroids, final_labels = kmeans(X_tensor, k)
+# Evaluating the Clusters
+# Visualize the clusters
+plt.figure(figsize=(8, 6))
+plt.scatter(X[:, 0], X[:, 1], c=final_labels.numpy(), cmap='viridis', marker='o', edgecolor='k', s=50)
+plt.scatter(final_centroids[:, 0].numpy(), final_centroids[:, 1].numpy(), c='red', marker='x', s=200)
+plt.title('k-Means Clustering')
+plt.xlabel('Feature 1')
+plt.ylabel('Feature 2')
+plt.show()
+# Within-cluster sum of squares (WCSS)
+def calculate_wcss(X, labels, centroids):
+    wcss = 0
+    for i in range(len(centroids)):
+        cluster_points = X[labels == i]
+        wcss += torch.sum((cluster_points - centroids[i]) ** 2).item()
+    return wcss
+wcss = calculate_wcss(X_tensor, final_labels, final_centroids)
+print(f'Within-cluster sum of squares: {wcss}')
+
+
+
+
+
+
+ 
+2.hierarchial.py
+
+
+
+
+
+[1:03 PM] Poornima (Guest)
+import torch
+import numpy as np
+import matplotlib.pyplot as plt
+from sklearn.datasets import make_blobs
+from scipy.cluster.hierarchy import dendrogram
+# Generate synthetic data
+n_samples = 30
+n_features = 2
+X, y = make_blobs(n_samples=n_samples, n_features=n_features, centers=3)
+# Convert to PyTorch tensors
+X_tensor = torch.from_numpy(X).float()
+# Define distance function
+def euclidean_distance(a, b):
+    return torch.sqrt(torch.sum((a - b) ** 2))
+def pairwise_distances(X):
+    n = X.size(0)
+    distances = torch.zeros((n, n))
+    for i in range(n):
+        for j in range(i + 1, n):
+            distances[i, j] = euclidean_distance(X[i], X[j])
+            distances[j, i] = distances[i, j]
+    return distances
+# Perform agglomerative clustering
+def agglomerative_clustering(X, method='single'):
+    n = X.size(0)
+    distances = pairwise_distances(X)
+    clusters = {i: [i] for i in range(n)}
+    history = []
+    cluster_mapping = {i: i for i in range(n)}
+    while len(clusters) > 1:
+        min_dist = float('inf')
+        to_merge = None
+        cluster_keys = list(clusters.keys())
+        for i in range(len(cluster_keys)):
+            for j in range(i + 1, len(cluster_keys)):
+                key_i = cluster_keys[i]
+                key_j = cluster_keys[j]
+                if method == 'single':
+                    dist = torch.min(distances[clusters[key_i], :][:, clusters[key_j]])
+                elif method == 'complete':
+                    dist = torch.max(distances[clusters[key_i], :][:, clusters[key_j]])
+                elif method == 'average':
+                    dist = torch.mean(distances[clusters[key_i], :][:, clusters[key_j]])
+                if dist < min_dist:
+                    min_dist = dist
+                    to_merge = (key_i, key_j)
+        i, j = to_merge
+        clusters[i].extend(clusters[j])
+        del clusters[j]
+        history.append([cluster_mapping[i], cluster_mapping[j], min_dist.item(), len(clusters[i])])
+        for k in clusters:
+            if k != i:
+                if method == 'single':
+                    dist = torch.min(distances[clusters[i], :][:, clusters[k]])
+                elif method == 'complete':
+                    dist = torch.max(distances[clusters[i], :][:, clusters[k]])
+                elif method == 'average':
+                    dist = torch.mean(distances[clusters[i], :][:, clusters[k]])
+                distances[i, k] = dist
+                distances[k, i] = dist
+        cluster_mapping[i] = n
+        n += 1
+    return history
+# Perform agglomerative clustering
+history = agglomerative_clustering(X_tensor, method='single')
+# Correcting the linkage matrix format
+def format_history(history):
+    n = len(history)
+    new_history = []
+    for i, (a, b, dist, count) in enumerate(history):
+        new_history.append([a, b, dist, count])
+    return np.array(new_history)
+# Format history for dendrogram
+formatted_history = format_history(history)
+# Plot dendrogram
+def plot_dendrogram(history):
+    plt.figure(figsize=(10, 7))
+    dendrogram(history, leaf_rotation=90, leaf_font_size=10)
+    plt.title('Dendrogram')
+    plt.xlabel('Sample index')
+    plt.ylabel('Distance')
+    plt.show()
+plot_dendrogram(formatted_history)
+ 
+
+
+
+
+
+
+
+
+
+3.DBSCAN.py
+
+
+
+
+
+
+
+
+
+[3:16 PM] Poornima (Guest)
+# DBSCAN with PyTorch
+import torch
+import matplotlib.pyplot as plt
+from sklearn.datasets import make_blobs
+# Generate synthetic data
+n_samples = 30
+n_features = 2
+X, y = make_blobs(n_samples=n_samples, n_features=n_features, centers=3, random_state=42)
+# Convert to PyTorch tensors
+X_tensor = torch.from_numpy(X).float()
+# Define distance function
+def euclidean_distance(a, b):
+    return torch.sqrt(torch.sum((a - b) ** 2, dim=1))
+epsilon = 0.5
+minPts = 5
+# DBSCAN functions
+def region_query(X, point_idx, epsilon):
+    distances = euclidean_distance(X[point_idx].unsqueeze(0), X)
+    return torch.where(distances <= epsilon)[0]
+def expand_cluster(X, labels, point_idx, cluster_id, epsilon, minPts):
+    seeds = region_query(X, point_idx, epsilon)
+    if len(seeds) < minPts:
+        labels[point_idx] = -1  # Mark as noise
+        return False
+    else:
+        labels[seeds] = cluster_id
+        seeds = seeds[seeds != point_idx]
+        while len(seeds) > 0:
+            current_point = seeds[0]
+            results = region_query(X, current_point, epsilon)
+            if len(results) >= minPts:
+                for i in results:
+                    if labels[i] == 0:
+                        seeds = torch.cat((seeds, torch.tensor([i])))
+                        labels[i] = cluster_id
+                    elif labels[i] == -1:
+                        labels[i] = cluster_id
+            seeds = seeds[1:]
+        return True
+def dbscan(X, epsilon, minPts):
+    cluster_id = 0
+    labels = torch.zeros(X.size(0), dtype=torch.int)
+    for point_idx in range(X.size(0)):
+        if labels[point_idx] == 0:
+            if expand_cluster(X, labels, point_idx, cluster_id + 1, epsilon, minPts):
+                cluster_id += 1
+    return labels
+# Perform DBSCAN clustering
+labels = dbscan(X_tensor, epsilon, minPts)
+# Plot the clusters
+def plot_clusters(X, labels):
+    unique_labels = torch.unique(labels)
+    colors = plt.get_cmap("viridis", len(unique_labels))
+    plt.figure(figsize=(8, 6))
+    for k in unique_labels:
+        if k == -1:
+            color = 'k'
+            marker = 'x'
+        else:
+            color = colors(k / len(unique_labels))
+            marker = 'o'
+        class_member_mask = (labels == k)
+        xy = X[class_member_mask]
+        plt.scatter(xy[:, 0], xy[:, 1], c=[color], marker=marker,  s=50, label=f'Cluster {k}' if k != -1 else 'Noise')
+    plt.title('DBSCAN Clustering')
+    plt.xlabel('Feature 1')
+    plt.ylabel('Feature 2')
+    plt.legend()
+    plt.show()
+plot_clusters(X_tensor.numpy(), labels)
+
+ 
