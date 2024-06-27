@@ -1,0 +1,195 @@
+RNN
+
+
+
+1.simple_rnn
+
+
+
+
+
+
+[11:18 AM] Poornima (Guest)
+import torch
+import torch.nn as nn
+import torch.optim as optim
+from torch.utils.data import DataLoader, Dataset
+# Sample dataset
+class SequenceDataset(Dataset):
+    def __init__(self, sequences, targets):
+        self.sequences = sequences
+        self.targets = targets
+    def __len__(self):
+        return len(self.sequences)
+    def __getitem__(self, idx):
+        return self.sequences[idx], self.targets[idx]
+# Define the RNN model
+class SimpleRNN(nn.Module):
+    def __init__(self, input_size, hidden_size, output_size, num_layers):
+        super(SimpleRNN, self).__init__()
+        self.rnn = nn.RNN(input_size, hidden_size, num_layers, batch_first=True)
+        self.fc = nn.Linear(hidden_size, output_size)
+    def forward(self, x):
+        out, _ = self.rnn(x)
+        out = self.fc(out[:, -1, :])  # Get the output from the last time step
+        return out
+# Hyperparameters
+input_size = 10  # Number of features in the input
+hidden_size = 20
+output_size = 2  # Number of output classes
+num_layers = 2
+num_epochs = 10
+learning_rate = 0.001
+# Generate some dummy data
+sequences = torch.randn(100, 5, input_size)  # 100 sequences of length 5
+targets = torch.randint(0, 2, (100,))  # Binary classification
+# Create dataset and dataloader
+dataset = SequenceDataset(sequences, targets)
+dataloader = DataLoader(dataset, batch_size=16, shuffle=True)
+# Instantiate the model, loss function, and optimizer
+model = SimpleRNN(input_size, hidden_size, output_size, num_layers)
+criterion = nn.CrossEntropyLoss()
+optimizer = optim.Adam(model.parameters(), lr=learning_rate)
+# Training loop
+for epoch in range(num_epochs):
+    for i, (inputs, labels) in enumerate(dataloader):
+        # Forward pass
+        outputs = model(inputs)
+        loss = criterion(outputs, labels)
+        # Backward pass and optimization
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
+    print(f'Epoch [{epoch+1}/{num_epochs}], Loss: {loss.item():.4f}')
+print("Training complete")
+# Save the model
+torch.save(model.state_dict(), 'simple_rnn_model.pth')
+# Load the model
+modele = SimpleRNN(input_size, hidden_size, output_size, num_layers)
+modele.load_state_dict(torch.load('simple_rnn_model.pth'))
+modele.eval()
+# Make a prediction
+with torch.no_grad():
+    sample_input = torch.randn(1, 5, input_size)  # Single sequence of length 5
+    print(f' SI :  {sample_input}')
+    prediction = modele(sample_input)
+    print(f' Pred : {prediction}')
+    predicted_class = torch.argmax(prediction, dim=1)
+    print(f'Predicted class: {predicted_class.item()}')
+
+
+'''
+Training Loop:
+For each epoch, the model processes the training data in batches.
+The loss is calculated using the criterion (CrossEntropyLoss).
+The optimizer updates the model parameters to minimize the loss.
+After each epoch, the average loss for that epoch is printed.
+Model Saving:
+After training, the model's state dictionary is saved to a file named simple_rnn_model.pth.
+Model Loading:
+The saved model state dictionary is loaded back into the model.
+Prediction:
+A random sample input sequence is generated.
+The model makes a prediction for this input.
+The predicted class is printed.
+'''
+ 
+
+
+
+
+
+
+2.text_classification.py
+
+
+
+
+
+
+
+
+[5:10 PM] Poornima (Guest)
+
+import torch
+import torch.nn as nn
+import torch.optim as optim
+# Sample text data
+text = "hello world this is a simple text generation example "
+chars = sorted(list(set(text)))
+print('Sorted List' , chars)
+char_to_idx = {ch: i for i, ch in enumerate(chars)}
+idx_to_char = {i: ch for i, ch in enumerate(chars)}
+print(f'Char:Idx  {char_to_idx}  Idx:Char {idx_to_char}  ')
+# Hyperparameters
+input_size = len(chars)
+hidden_size = 128
+output_size = len(chars)
+n_layers = 1
+seq_length = 10
+learning_rate = 0.001
+num_epochs = 500
+
+# RNN model definition
+class SimpleRNN(nn.Module):
+    def __init__(self, input_size, hidden_size, output_size, n_layers=1):
+        super(SimpleRNN, self).__init__()
+        self.hidden_size = hidden_size
+        self.n_layers = n_layers
+        self.rnn = nn.RNN(input_size, hidden_size, n_layers, batch_first=True)
+        self.fc = nn.Linear(hidden_size, output_size)
+    def forward(self, x, hidden):
+        out, hidden = self.rnn(x, hidden)
+        out = self.fc(out.reshape(out.size(0) * out.size(1), out.size(2)))
+        return out, hidden
+    def init_hidden(self, batch_size):
+        return torch.zeros(self.n_layers, batch_size, self.hidden_size)
+
+# Prepare the data
+def char_tensor(string):
+    tensor = torch.zeros(len(string), len(chars))
+    for c in range(len(string)):
+        tensor[c][char_to_idx[string[c]]] = 1
+    return tensor
+
+# Training the model
+model = SimpleRNN(input_size, hidden_size, output_size, n_layers)
+criterion = nn.CrossEntropyLoss()
+optimizer = optim.Adam(model.parameters(), lr=learning_rate)
+model.train()
+for epoch in range(num_epochs):
+    hidden = model.init_hidden(1)
+    for i in range(0, len(text) - seq_length, seq_length):
+        seq_in = text[i:i + seq_length]
+        seq_out = text[i + 1:i + seq_length + 1]
+        seq_in_tensor = char_tensor(seq_in).unsqueeze(0)
+        seq_out_tensor = torch.tensor([char_to_idx[ch] for ch in seq_out])
+        optimizer.zero_grad()
+        output, hidden = model(seq_in_tensor, hidden)
+        loss = criterion(output, seq_out_tensor)
+        loss.backward(retain_graph=True)  # Use retain_graph=True to keep the graph for next iteration
+        optimizer.step()
+        hidden = hidden.detach()  # Detach hidden state to prevent backpropagating through the entire history
+    if (epoch + 1) % 50 == 0:
+        print(f'Epoch [{epoch + 1}/{num_epochs}], Loss: {loss.item():.4f}')
+
+# Text generation
+def generate_text(model, start_text, length):
+    model.eval()
+    hidden = model.init_hidden(1)
+    input_seq = char_tensor(start_text).unsqueeze(0)
+    generated_text = start_text
+    for _ in range(length):
+        output, hidden = model(input_seq, hidden)
+        _, top_idx = output.topk(1)
+        predicted_char = idx_to_char[top_idx[-1].item()]
+        generated_text += predicted_char
+        input_seq = char_tensor(predicted_char).unsqueeze(0)
+    return generated_text
+
+# Generate new text
+start_text = "hello"
+generated_text = generate_text(model, start_text, 100)
+print("Generated text:")
+print(generated_text)
+ 
