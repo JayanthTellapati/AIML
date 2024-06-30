@@ -1,0 +1,203 @@
+NLP
+
+
+
+
+1.pre_trained_embeddings.py
+
+
+
+
+
+
+[12:13 PM] Poornima (Guest)
+import torchtext; torchtext.disable_torchtext_deprecation_warning()
+from torchtext.vocab import GloVe
+
+# Load pre-trained GloVe embeddings
+glove = GloVe(name='6B', dim=100)
+# Example: Get the vector for the word 'computer'
+vector = glove['computer']
+print('Vec for Computer :  ',vector)
+# Integrating Embeddings into a Neural Network
+import torch
+import torch.nn as nn
+import torch.optim as optim
+class TextClassificationModel(nn.Module):
+    def __init__(self, vocab_size, embed_size, hidden_size, output_size, pretrained_embeddings):
+        super(TextClassificationModel, self).__init__()
+        self.embedding = nn.Embedding(vocab_size, embed_size)
+        self.embedding.weight.data.copy_(pretrained_embeddings)
+        self.embedding.weight.requires_grad = False  # Freeze embeddings
+        self.rnn = nn.RNN(embed_size, hidden_size, batch_first=True)
+        self.fc = nn.Linear(hidden_size, output_size)
+    def forward(self, x):
+        x = self.embedding(x)
+        h0 = torch.zeros(1, x.size(0), hidden_size).to(x.device)
+        out, _ = self.rnn(x, h0)
+        out = self.fc(out[:, -1, :])
+        return out
+# Example usage
+vocab_size = len(glove.stoi)
+embed_size = 100
+hidden_size = 256
+output_size = 2  # Example for binary classification
+# Create an embedding matrix from the pre-trained embeddings
+embedding_matrix = torch.zeros((vocab_size, embed_size))
+for word, idx in glove.stoi.items():
+    embedding_matrix[idx] = glove[word]
+model = TextClassificationModel(vocab_size, embed_size, hidden_size, output_size, embedding_matrix)
+# Dummy data and training loop for illustration
+criterion = nn.CrossEntropyLoss()
+optimizer = optim.Adam(model.parameters(), lr=0.001)
+data = torch.randint(0, vocab_size, (10, 5))  # Example data
+labels = torch.randint(0, 2, (10,))  # Example labels
+for epoch in range(5):
+    optimizer.zero_grad()
+    outputs = model(data)
+    loss = criterion(outputs, labels)
+    loss.backward()
+    optimizer.step()
+    print(f'Epoch [{epoch+1}/5], Loss: {loss.item():.4f}')
+
+# Testing
+model.eval()
+# Dummy test data (replace with actual test data)
+test_data = ["example sentence for testing", "another test sentence"]
+# Preprocess and tokenize the test data
+def preprocess_sentence(sentence, glove):
+    tokens = sentence.split()
+    indices = [glove.stoi.get(token, glove.stoi['unk']) for token in tokens]  # Use 'unk' for unknown words
+    return torch.tensor(indices)
+test_tensors = [preprocess_sentence(sentence, glove) for sentence in test_data]
+# Pad the test sequences to the same length (assuming a max length)
+max_length = max(len(tensor) for tensor in test_tensors)
+padded_tensors = [torch.cat([tensor, torch.zeros(max_length - len(tensor))]) for tensor in test_tensors]
+test_tensors = torch.stack(padded_tensors).long()
+# Generate predictions
+with torch.no_grad():
+    outputs = model(test_tensors)
+    _, predicted = torch.max(outputs, 1)
+# Assuming the labels are 0 and 1 for binary classification
+label_names = ["Class 0", "Class 1"]
+# Print the predictions
+for i, sentence in enumerate(test_data):
+    print(f"Sentence: {sentence}")
+    print(f"Predicted Label: {label_names[predicted[i].item()]}")
+
+ 
+ 
+
+
+
+2.text_classification.py
+
+
+
+
+
+
+
+
+[4:20 PM] Poornima (Guest)
+map style
+[4:20 PM] Poornima (Guest)
+import torch
+import torch.nn as nn
+import torch.optim as optim
+import torchtext; torchtext.disable_torchtext_deprecation_warning()
+from torchtext.data.utils import get_tokenizer
+from torchtext.vocab import build_vocab_from_iterator
+from torchtext.datasets import IMDB
+from torchtext.data.functional import to_map_style_dataset
+from torch.utils.data import DataLoader
+# Load and preprocess the dataset
+tokenizer = get_tokenizer("basic_english")
+def yield_tokens(data_iter):
+    for _, text in data_iter:
+        yield tokenizer(text)
+
+# Text and label processing
+def text_pipeline(x): return vocab(tokenizer(x))
+def label_pipeline(x): return 1 if x == 'pos' else 0
+
+# Collate function for DataLoader
+def collate_batch(batch):
+    label_list, text_list, offsets = [], [], [0]
+    for _label, _text in batch:
+        label_list.append(label_pipeline(_label))
+        processed_text = torch.tensor(text_pipeline(_text), dtype=torch.int64)
+        text_list.append(processed_text)
+        offsets.append(processed_text.size(0))
+    label_list = torch.tensor(label_list, dtype=torch.int64)
+    offsets = torch.tensor(offsets[:-1]).cumsum(dim=0)
+    text_list = torch.cat(text_list)
+    return label_list, text_list, offsets
+
+# Define the RNN model
+class SentimentRNN(nn.Module):
+    def __init__(self, vocab_size, embed_size, hidden_size, output_size, num_layers=1):
+        super(SentimentRNN, self).__init__()
+        self.embedding = nn.EmbeddingBag(vocab_size, embed_size, sparse=True)
+        self.rnn = nn.RNN(embed_size, hidden_size, num_layers, batch_first=True)
+        self.fc = nn.Linear(hidden_size, output_size)
+    def forward(self, text, offsets):
+        embedded = self.embedding(text, offsets)
+        out, _ = self.rnn(embedded.unsqueeze(1))
+        out = self.fc(out[:, -1, :])
+        return out
+
+#DRIVER
+# Load IMDB dataset
+train_iter, test_iter = IMDB(split=('train', 'test'))
+
+# Build vocabulary
+vocab = build_vocab_from_iterator(yield_tokens(train_iter), specials=["<unk>"])
+vocab.set_default_index(vocab["<unk>"])
+# Reload dataset with map style
+train_dataset = to_map_style_dataset(train_iter)
+test_dataset = to_map_style_dataset(test_iter)
+
+# DataLoader
+batch_size = 32
+train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, collate_fn=collate_batch)
+test_dataloader = DataLoader(test_dataset, batch_size=batch_size, shuffle=True, collate_fn=collate_batch)
+
+# Hyperparameters
+vocab_size = len(vocab)
+embed_size = 100
+hidden_size = 256
+output_size = 2  # binary classification
+num_layers = 2
+# Initialize model, loss function, and optimizer
+model = SentimentRNN(vocab_size, embed_size, hidden_size, output_size, num_layers)
+criterion = nn.CrossEntropyLoss()
+optimizer = optim.SGD(model.parameters(), lr=0.001)
+# Training the model
+num_epochs = 5
+for epoch in range(num_epochs):
+    model.train()
+    total_loss = 0
+    for labels, text, offsets in train_dataloader:
+        optimizer.zero_grad()
+        output = model(text, offsets)
+        loss = criterion(output, labels)
+        loss.backward()
+        optimizer.step()
+        total_loss += loss.item()
+    print(f'Epoch {epoch + 1}, Loss: {total_loss / len(train_dataloader):.4f}')
+print('Test data :  ',test_dataloader)
+# Testing the model
+model.eval()
+total_acc, total_count = 0, 0
+with torch.no_grad():
+    for labels, text, offsets in test_dataloader:
+        output = model(text, offsets)
+        pred = output.argmax(1)
+        total_acc += (pred == labels).sum().item()
+        total_count += labels.size(0)
+        #print('Pred : ', pred)
+accuracy = total_acc / total_count
+print(f'Test Accuracy: {accuracy:.4f}')
+
+ 
