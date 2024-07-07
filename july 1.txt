@@ -1,0 +1,102 @@
+import os
+import numpy as np
+import torch
+import torch.nn as nn
+import torch.optim as optim
+import matplotlib.pyplot as plt
+
+# Define the file path
+file_path = r'E:\AIML\pythonProject\shakespeare_sonnets.txt'
+
+# Check if the file exists
+if not os.path.exists(file_path):
+    raise FileNotFoundError(f"The file '{file_path}' was not found. Please make sure it is in the specified directory.")
+
+# Read the text file
+with open(file_path, 'r') as file:
+    text = file.read()
+
+# Preprocess the text
+text = text.lower()
+chars = sorted(set(text))
+char_to_int = {char: i for i, char in enumerate(chars)}
+int_to_char = {i: char for i, char in enumerate(chars)}
+
+# Encode the text
+encoded_text = np.array([char_to_int[char] for char in text])
+
+
+# Define the LSTM model
+class LSTMModel(nn.Module):
+    def __init__(self, input_size, hidden_size, output_size, n_layers=1):
+        super(LSTMModel, self).__init__()
+        self.hidden_size = hidden_size
+        self.n_layers = n_layers
+        self.lstm = nn.LSTM(input_size, hidden_size, n_layers, batch_first=True)
+        self.fc = nn.Linear(hidden_size, output_size)
+
+    def forward(self, x, hidden):
+        out, hidden = self.lstm(x, hidden)
+        out = self.fc(out[:, -1, :])
+        return out, hidden
+
+    def init_hidden(self, batch_size):
+        return (torch.zeros(self.n_layers, batch_size, self.hidden_size),
+                torch.zeros(self.n_layers, batch_size, self.hidden_size))
+
+
+# Training function
+def train_model(model, data, n_epochs, batch_size, learning_rate, clip_value):
+    criterion = nn.CrossEntropyLoss()
+    optimizer = optim.Adam(model.parameters(), lr=learning_rate)
+    losses = []
+
+    for epoch in range(n_epochs):
+        hidden = model.init_hidden(batch_size)
+        epoch_loss = 0
+
+        for i in range(0, len(data) - batch_size, batch_size):
+            inputs = torch.tensor(data[i:i + batch_size], dtype=torch.float32).view(batch_size, -1, 1)
+            targets = torch.tensor(data[i + 1:i + 1 + batch_size], dtype=torch.int64)
+
+            model.zero_grad()
+            hidden = tuple([each.data for each in hidden])  # Detach hidden states
+            output, hidden = model(inputs, hidden)
+            loss = criterion(output, targets.view(-1))
+            loss.backward()
+
+            # Gradient clipping
+            torch.nn.utils.clip_grad_norm_(model.parameters(), clip_value)
+
+            optimizer.step()
+            epoch_loss += loss.item()
+
+        avg_epoch_loss = epoch_loss / (len(data) // batch_size)
+        losses.append(avg_epoch_loss)
+        print(f'Epoch {epoch + 1}/{n_epochs}, Loss: {avg_epoch_loss}')
+
+    return losses
+
+
+# Define hyperparameters
+input_size = 1
+hidden_size = 256
+output_size = len(chars)
+n_layers = 2
+batch_size = 100
+learning_rate = 0.001
+clip_value = 5
+n_epochs = 20
+
+# Initialize model
+model = LSTMModel(input_size, hidden_size, output_size, n_layers)
+
+# Train the model
+losses = train_model(model, encoded_text, n_epochs, batch_size, learning_rate, clip_value)
+
+# Plot training loss
+plt.plot(losses)
+plt.xlabel('Epoch')
+plt.ylabel('Loss')
+plt.title('Training Loss')
+plt.show()
